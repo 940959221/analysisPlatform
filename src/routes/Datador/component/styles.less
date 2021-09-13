@@ -1,0 +1,245 @@
+@p: 10px;
+@pos: relative;
+@flex: flex;
+@hund: 100%;
+@between: space-between;
+@height: 500px;
+
+// Userdor.js
+.card{
+  height: @hund;
+  background: #f6f6f6;
+  border: none;
+
+  .focus{
+    border-radius: 8px;
+    background: #fff;
+    margin-bottom: 20px;
+    padding-bottom: 10px;
+    
+    .focusText{
+      margin-bottom: 12px;
+      padding: 11px 20px 0 20px;
+      font-size: 18px;
+      font-weight: 'bold';
+      display: @flex;
+      justify-content: space-between;
+
+      .img{
+        width: 25px;
+        height: 25px;
+        cursor: pointer;
+      }
+    }
+  
+    .sort1{
+      display: @flex;
+      padding: 0 10px;
+      flex-wrap: wrap;
+    }
+  
+    .sort{
+      display: @flex;
+      padding: 0 20px;
+      flex-wrap: wrap;
+    }
+  }
+
+  .focus:hover{
+    box-shadow:0px 0px 20px rgba(18,55,89,0.12);
+  }
+}
+
+.drillModal{
+  position: absolute;
+  top: 0;
+  bottom: 0;
+  left: 0;
+  right: 0;
+  margin: auto;
+  height: 90%;
+  padding-bottom: 0;
+  overflow: auto;
+
+  .drillBox{
+    position: relative;
+  
+    .back{
+      position: absolute;
+      right: 10px;
+      top: 6px;
+      z-index: 100;
+    }
+    
+    .recommendList:hover{
+      cursor: pointer;
+    }
+  }
+
+}
+
+// ChartsComponents.js
+.bigBox{
+  border: solid 1px #E0E4E8;
+  border-radius: 8px;
+  margin-bottom: 20px;
+}
+
+.bigBox:hover{
+  box-shadow:0px 0px 20px rgba(18,55,89,0.12);
+}
+
+// Charts.js
+.buttonBox{
+  display: flex;
+  flex-flow: row-reverse;
+  margin-bottom: 15px;
+
+  .button{
+    margin-right: 15px;
+  }
+}
+
+.tableTitle{ 
+  text-align: center;
+  font-weight: bolder;
+  font-size: 18px;
+}
+
+.chartBox{
+  display: @flex;
+  justify-content: @between;
+
+  .left{
+    height: @height;
+    // overflow-x: scroll;
+    // overflow-y: hidden;
+
+    .comment{
+      height: 50px;
+      overflow: auto;
+      text-align: center;
+    }
+  
+    .chart{
+      width: 100%;
+      // height: calc(@height - 50px);
+    }
+  }
+
+  .dash{
+    border-left: dashed 1px #E0E4E8;
+    height: @height;
+    width: 10px;
+    margin: 0 10px;
+  }
+
+  .list{
+    display: @flex;
+    // flex-direction: column;
+    justify-content: @between;
+    // height: @height;
+
+    .tabs{
+      height: @hund;
+      width: @hund;
+
+      .tabPane{
+        height: @hund;
+
+        .lists{
+          display: @flex;
+        }
+
+        .noData{
+          position: absolute;
+          height: 30px;
+          width: 100px;
+          top: 0;
+          left: 0;
+          bottom: 0;
+          right: 0;
+          margin: auto;
+          color: #3BA1FF;
+        }
+      }
+
+      .tabPane>div{
+        // height: @hund;
+        font-size: 14px;
+      }
+
+      .tabPane>div>div{
+        display: flex;
+        justify-content: @between;
+        // padding: 0 10px;
+        font-size: 14px;
+        margin-bottom: 16px;
+      }
+
+      .tabPane>div>div>div span{
+        color: #3BA1FF;
+        width: 20px;
+        text-align: center;
+        display: inline-block;
+      }
+    }
+  }
+}
+
+// CardsComponent.js
+.parent:hover{
+  cursor: pointer;
+}
+
+.parent{
+  width: 25%;
+  padding: 0 10px;
+  background-size: cover;
+
+  .child{
+    height: 120px;
+    margin-bottom: 14px;
+    border-radius: 8px;
+    // color: #fff;
+    font-size: 16px;
+    padding: 5px 10px;
+    overflow: hidden;
+
+    .title{
+      height: 24px;
+      overflow: hidden;
+    }
+
+    .measures{
+      display: @flex;
+      justify-content: space-between;
+
+      .middleMeasure{
+        display: @flex;
+        justify-content: space-between;
+
+        .measure{
+          // width: 30%;
+          height: 90px;
+          display: @flex;
+          flex-direction: column;
+          justify-content: space-between;
+  
+          .value{
+            font-size: 24px; 
+            font-weight: bold;
+          }
+  
+          .measureName{
+            font-size: 12px;
+          }
+        }
+        .moreDom{
+          font-size: 12px;
+          margin-top: 5px;
+        }
+      }
+    }
+  }
+}

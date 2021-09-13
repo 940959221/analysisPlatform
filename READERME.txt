@@ -1,0 +1,60 @@
+
+项目框架下载文档
+http://git.sinosafe.com.cn/doc/snk/blob/master/snk-cli.md
+--------------------------------------------------------------------------------------
+
+每次新建一个应用和主题 都需要配置um系统 在um的[菜单管理-菜单管理]中，根据router文件的菜单配置，
+相应在um的菜单配置中添加或者修改填写相同的配置
+
+生产um：um：http://um.sinosafe.com.cn/um/main.do
+测试um：um：http://10.1.109.80:8080/um/main.do
+测试账号: zhaoxingcheng 密码：123456
+生产账号：zhanshaobo 密码：Habx-8888
+---------------------------------------------------------------------------------------
+
+工程代码拷贝下来之后 运行 npm install 下载node文件包 然后才可以执行npm run start打开界面 
+本项目正式服务访问： http://iap.sinosafe.com.cn/
+---------------------------------------------------------------------------------------
+
+组件引用
+组件底层是antd 
+原来的方式 import { Button , xxx} from 'antd'
+现在的方式 import { Button , xxx} from 'snk-web'
+---------------------------------------------------------------------------------------
+
+打包:
+"start": "cross-env ESLINT=none NODE_ENV=development roadhog server",
+"start-sit": "cross-env ESLINT=none NODE_ENV=sit roadhog server",
+"start-uat": "cross-env ESLINT=none NODE_ENV=uat roadhog server",
+"start-pro": "cross-env ESLINT=none NODE_ENV=production roadhog server",
+"build": "cross-env ESLINT=none NODE_ENV=development roadhog build",
+"build-uat": "cross-env ESLINT=none NODE_ENV=uat roadhog build",
+"build-sit": "cross-env ESLINT=none NODE_ENV=sit roadhog build",
+"build-pro": "cross-env ESLINT=none NODE_ENV=production roadhog build",
+
+以上是package.json中的命令配置。 分别对应了 四个环境的运行命令和打包命令
+
+运行相应环境的命令是  npm run start|start-sit|start-uat|start-pro   （其中选一个）
+
+> 运行验证相应环境正常后，
+
+> 再运行相应的打包命令 npm run build|build-sit|build-uat|build-pro   （其中选一个）
+
+** 目前 本项目的运行和生产打包 执行命令 npm run start 和 npm run build-pro 即可
+-----------------------------------------------------------------------------------------------
+
+注： (1) 综改监控的[业务类(保险起期)、业务类(承保确认时间)]和自动核保应用的[自核指标(保险起期)]这三个界面在本地环境打开是404，
+        是因为本地环境跟生产环境的主题id跟应用id不一样，router文件写的路由是生产环境的，测试环境如果要正常查看界面的话，需要改下router
+        文件菜单路由，具体看router文件。然后要调试接口的话 也要改下 dimension/Query文件的componentDidMount方法里面if else条件的判断，
+        具体看dimension/Query文件 
+
+    (2)点击跳转某个界面的时候 也要现在um配置菜单 在菜单里设置样式display:'none', 然会需要在router文件里相应的路由配置那里设置permission: 'all',即可。
+
+
+
+
+
+
+
+
+

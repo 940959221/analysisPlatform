@@ -1,0 +1,57 @@
+.box{
+  margin-right: 20px;
+}
+.lineBox{
+  position: relative;
+  display: inline-block;
+  margin-right: 20px;
+
+  .linData{
+    transition: all .8s;
+    // opacity: 0;
+    // display: none;
+    overflow: hidden;
+    position: absolute;
+    background-color: #f9f9f9;
+    box-shadow: 0px 8px 16px 0px rgba(0,0,0,0.2);
+    z-index: 1;
+    height: 0;
+
+    .tabs{
+      width: 236px;    // 此处的大小是写死的，目的是为了让没有默认基准线的时候，临时也能占同样的宽度
+
+      .tabPane{
+        padding: 0 10px;
+
+        .checkbox{
+          display: flex;
+          flex-direction: column;
+        }
+      }
+    }
+  }
+}
+.lineBox:hover .linData{
+  // opacity: 1;
+  height: 300px;
+  // z-index: -10;
+  // display: block;
+  // height: 500px;
+}
+.modalBox{
+  display: flex;
+
+  .formItem{
+    display: flex;
+    margin-right: 20px;
+
+    .select{
+      width: 100px;
+    }
+  }
+}
+.drop{
+  .color{
+    line-height: 32px;
+  }
+}

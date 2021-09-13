@@ -1,0 +1,50 @@
+@p: 10px;
+@pos: relative;
+@flex: flex;
+@hund: 100%;
+@between: space-between;
+
+.box{
+  padding: @p;
+  position: @pos;
+  display: @flex;
+  height: 150px;
+  // width: 25%;
+  
+  .warn{
+    width: 10px;
+    height: @hund;
+    background: red;
+  }
+  .card{
+    border: solid 1px #000;
+    // border-left: none;
+    height: @hund;
+    width: @hund;
+    padding: @p;
+    font-size: 16px;
+    display: @flex;
+    flex-direction: column;
+    justify-content: space-around;
+  }
+  .bigFont{
+    font-size: 35px;
+    font-weight: bold;
+  }
+  .smallFont{
+    display: @flex;
+    justify-content: space-between;
+
+    .big{
+      font-size: 25px;
+      font-weight: bold;
+    }
+  }
+  .bottom{
+    display: @flex;
+    justify-content: @between;
+  }
+  .span{
+    padding: 0 5px;
+  }
+}

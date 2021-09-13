@@ -1,0 +1,726 @@
+import React, { PureComponent } from 'react';
+import { connect } from 'dva';
+import {Form, Row, Col, Modal, Button, Table, Card, message, Collapse, Select,
+  List, Spin, DatePicker, } from 'snk-web';
+import PageHeaderLayout from '../../layouts/PageHeaderLayout';
+import QueryAnalyLeftComponent from './components/QueryAnalyLeftComponent';
+import QueryAnalyFilter from './components/QueryAnalyFilter';
+import moment from 'moment';
+
+const Panel = Collapse.Panel;
+const FormItem = Form.Item;
+const Option = Select.Option;
+const { MonthPicker, RangePicker, WeekPicker } = DatePicker;
+
+@connect(({ analysis, loading }) => ({
+  analysis,
+  loading: loading.models.analysis,
+}))
+@Form.create()
+export default class QueryAnalysis extends PureComponent {
+  state = {
+    expandedKeys: [],
+    autoExpandParent: true,
+    checkedKeys: [],
+    treeData: [],
+    loadLeftData: false,
+    parentKey: '',
+    getMainTableData: [],
+    tdId: '',
+    filterListModel: false,
+    mainTabInfo: '',
+    filterInfoValue: [],
+    filterExpandedKeys: [],
+    filterConfigName: '',
+    checkedKeys: [],
+    filterItemList: [],
+    loadingList: false,
+    currentPageNum: 1, // 当前页码数
+    pageSize: 10, // 每页大小
+    payload: {},
+    showTable: false,
+    getMainTabDateColData: [],
+    tabelScrollX: 0,
+    downloadButFlag: false,
+  }
+
+  componentDidMount() {
+    // 获取主表信息
+    this.props.dispatch({
+      type: 'analysis/getMainTable',
+    }).then(()=>{
+      const {getMainTableData} = this.props.analysis;
+      this.setState({ getMainTableData, });
+      if (getMainTableData.length > 0) {
+        const tbId = getMainTableData[0].tbId;
+        // 获取主表下的统计时间
+        this.props.dispatch({
+          type: 'analysis/getMainTabDateCol',
+          payload: {
+            mainTabInfo: {tbId,}
+          }
+        });
+      }
+    }).catch((e) => {
+      message.warn(e.message);
+    });
+
+    this.props.dispatch({
+      type: 'analysis/getAllTableInfo',
+    }).then(()=>{
+      const {getAllTableInfoData} = this.props.analysis;
+      const expandedKeys = [];
+      getAllTableInfoData.map((i) => {
+        expandedKeys.push(i.dbName +'-'+ i.tbId);
+      });
+      this.setState({ expandedKeys: [], expandedKeys, checkedKeys: [], loadLeftData: false, });
+      this.props.form.setFieldsValue({ filterInfo: [] });
+    }).catch((e)=>{
+      message.warn(e.message);
+    });
+  }
+
+  // 根据主表获取相关表信息
+  selectTbInfo = (value) => {
+    const tbId = value.split('-')[0];
+    this.setState({ loadLeftData: true, mainTabInfo: tbId, filterInfoValue: [], filterItemList: [], });
+    
+    // 获取左边和字段
+    this.props.dispatch({
+      type: 'analysis/getMainTabRelateTabInfo',
+      payload: {
+        tbIdList: [tbId]
+      }
+    }).then(()=>{
+      setTimeout(()=>{
+        this.setState({ checkedKeys: [], loadLeftData: false, tdId: '' });
+        this.props.form.setFieldsValue({ filterInfo: [], mainTabDate: '', rightValue: undefined, leftValue: undefined }); // rightValue
+      },100);
+    }).catch((e)=>{
+      message.warn(e.message);
+    });
+    // 获取统计时间
+    this.props.dispatch({
+      type: 'analysis/getMainTabDateCol',
+      payload: {
+        mainTabInfo: {tbId,}
+      }
+    }).then(()=>{
+      const {getMainTabDateColData} = this.props.analysis;
+      this.setState({ getMainTabDateColData, });
+    }).catch((e) =>{
+      message.warn(e.message);
+    });
+  }
+
+  onExpand = (expandedKeys) => {
+    this.setState({
+      expandedKeys,
+    });
+  }
+
+  onCheck = (checkedKeys) => {
+    if (checkedKeys.length > 0) {
+      let filterInfoValue = [];
+      checkedKeys.map((i) => {
+        this.setState({ tdId: i.split('-')[2], checkedKeys,});
+        if (i.split('-').length > 3) {
+          filterInfoValue.push(i.split('-')[6] +'-'+i.split('-')[0]);
+        }
+      }); 
+      setTimeout(()=>{
+        this.props.form.setFieldsValue({ filterInfo: filterInfoValue });
+      },50);
+      this.setState({ filterInfoValue, });
+      setTimeout(()=>{ // 删除字段 在选择字段里，如果该删除元素对应的表 已经没有其他的字段 在filterItemList里面对应表的数据也要删除
+        let tbName = [], filterItemList = [];
+        checkedKeys.map((item) => {
+          if (item.split('-').length > 2) {
+            tbName.push(item.split('-')[6]);
+          }
+        });
+        const tbNameArr = Array.from(new Set(tbName));
+        for (var i = 0; i < tbNameArr.length; i++) {
+          for (var j = 0; j < this.state.filterItemList.length; j++) {
+            if (tbNameArr[i] === this.state.filterItemList[j].tbCname) {
+              filterItemList.push(this.state.filterItemList[j])
+            } 
+          }
+        }
+        this.setState({ filterItemList, });
+      },200);
+    } else {
+      this.props.form.setFieldsValue({ filterInfo: [] });
+      this.setState({ tdId: '', checkedKeys, filterInfoValue: [], filterItemList: [], mainTabInfo: '', });
+    }
+  }
+
+  // 删除选择字段
+  onDeleteItem = (deleteItem) => {
+    // 删除字段 在选择字段里，如果该删除元素对应的表 已经没有其他的字段 在filterItemList里面对应表的数据也要删除
+    let filterInfo = [];
+    setTimeout(()=>{
+      filterInfo = this.props.form.getFieldValue('filterInfo');
+       if (this.state.filterItemList.length > 0 && filterInfo.length > 0) {
+        let tbName = [], filterItemList = [];
+        filterInfo.map((i) =>{
+          tbName.push(i.split('-')[0]);
+        });
+        const tbNameArr = Array.from(new Set(tbName));
+        for (var i = 0; i < tbNameArr.length; i++) {
+          for (var j = 0; j < this.state.filterItemList.length; j++) {
+            if (tbNameArr[i] === this.state.filterItemList[j].tbCname) {
+              filterItemList.push(this.state.filterItemList[j]);
+            } 
+          }
+        }
+        this.setState({ filterItemList, });
+      } else if(filterInfo.length === 0){
+        this.setState({ filterItemList: [], });
+      }
+    },200);
+    
+    const checkedKeys = this.state.checkedKeys;
+    checkedKeys.map((i,index) =>{
+      if (i.split('-')[0] === deleteItem.split('-')[1] && i.split('-')[6] === deleteItem.split('-')[0]) {
+        checkedKeys.splice(index,1);
+        this.state.parentKey = i.split('-')[1] +'-'+ i.split('-')[2];
+      }
+      checkedKeys.map((i,index) => {
+        if (i === this.state.parentKey) {
+          checkedKeys.splice(index,1);
+        }
+      });
+    });
+    this.setState({ checkedKeys, });
+  }
+
+  onOkFilterListModel = (e) => {
+    e.preventDefault();
+    this.setState({ filterListModel: false, filterConfigName: '', });
+  }
+
+  onCanelFilterListModel = (e) => {
+    if (this.state.filterItemList.length === 0) {
+      this.setState({ filterItemList: [], });
+    }
+    this.setState({ filterListModel: false, filterConfigName: '', }) 
+  }
+
+  filterOnExpand = (expandedKeys,) => {
+    this.setState({
+      autoExpandParent: false,
+      filterExpandedKeys: expandedKeys,
+    });
+  }
+
+  addFilter = () => {
+    this.setState({ filterListModel: true });
+    const selectTabColInfo = [];
+    if (this.state.checkedKeys.length > 0) {
+      this.state.checkedKeys.map((i) => {
+        const infoChild = {};
+        if (i.split('-').length > 2) {
+          infoChild['tbId'] = i.split('-')[2];
+          selectTabColInfo.push(infoChild);
+        }
+      });
+    }
+    this.props.dispatch({
+      type: 'analysis/getFilterInfo',
+      payload: {
+        mainTabInfo: {tbId: this.state.mainTabInfo},
+        selectTabColInfo,
+      }
+    }).then(()=>{
+       const expandedKeys = [];
+       const {getFilterInfoData} = this.props.analysis;
+        getFilterInfoData.map((i) => {
+          expandedKeys.push(i.dbName +'-'+ i.tbId);
+        });
+        this.setState({ filterExpandedKeys: expandedKeys });
+    }).catch((e)=>{
+      message.warn(e.message);
+    });
+  }
+
+  // 取消查询列表
+  onCancelSearchInfo = () => {
+    this.setState({ filterItemList: [], checkedKeys: [], showTable: false, });
+    this.props.form.resetFields();
+  }
+
+  onCancelFilterList = () => {
+    setTimeout(()=>{
+      this.props.form.setFieldsValue({ dimDesc: [], });
+    },10);
+  }
+
+  // 查询
+  submitForm = (e) => {
+    e.preventDefault();
+    this.props.form.validateFields((err, values) => {
+      if (err) return;
+      if (values.leftValue === undefined || values.rightValue === undefined || values.leftValue === null || values.rightValue === null) {
+        message.warn('统计时间必选');
+        return;
+      }
+      const mainTabDateInfo = {}; // 主表时间 
+      mainTabDateInfo['colName'] = values.mainTabDate.split('-')[0];
+      mainTabDateInfo['dataType'] = values.mainTabDate.split('-')[1];
+      mainTabDateInfo['dbName'] = values.mainTabDate.split('-')[2];
+      mainTabDateInfo['tbName'] = values.mainTabDate.split('-')[3];
+      mainTabDateInfo['timeSegment'] = {leftValue: values.leftValue.format("YYYY-MM-DD"), rightValue: values.rightValue.format("YYYY-MM-DD")};
+      const filterMetas = []; // 过滤条件
+      this.state.filterItemList.map((i) =>{ 
+        const operation = i.operation;
+        const farCommMetaList = [];
+        const filterInfo = {}, filterMetasItem = {};
+        for (var j = 0; j < operation.length; j++) {
+          const farCommMetaListItem = {};
+          if (i.value.length > 0) { 
+            farCommMetaListItem['colCname'] = i.colCname;
+            farCommMetaListItem['colId'] = i.colId;
+            farCommMetaListItem['colName'] = i.colName;
+            farCommMetaListItem['dataType'] = i.dataType;
+            farCommMetaListItem['dbName'] = i.dbName;
+            farCommMetaListItem['operation'] = operation[j];
+            farCommMetaListItem['tbCname'] = i.tbCname;
+            farCommMetaListItem['tbId'] = i.tbId;
+            farCommMetaListItem['tbName'] = i.tbName;
+            farCommMetaListItem['value'] = i.value[j];
+            farCommMetaList.push(farCommMetaListItem);
+          } 
+        }  
+        filterMetasItem['colName'] = i.colName;
+        filterMetasItem['colType'] = i.colType;
+        filterMetasItem['dateFlag'] = i.dateFlag;
+        filterMetasItem['dbName'] = i.dbName;
+        filterMetasItem['farCommMetaList'] = farCommMetaList;
+        filterMetasItem['tbName'] = i.tbName;
+        filterMetas.push(filterMetasItem); 
+      });
+
+      let newFilterMetasJson = []; // 合并且去重后farCommMetaList的新数组
+      for (const i of filterMetas) {
+        let flag = true;
+        for (const j of newFilterMetasJson) {
+          if (j.colName === i.colName && j.tbName === i.tbName && j.dbName === i.dbName && i.colType === j.colType && i.dateFlag === j.dateFlag) {
+            const farCommMetaList = [...j.farCommMetaList, ...i.farCommMetaList]
+            const farCommMetaListArr = [];
+            // 合并且去重后farCommMetaList的新数组
+            for (const k of farCommMetaList) { 
+              let farCommMetaListFlag = true;
+              for (const n of farCommMetaListArr) {
+                if (k.colId === n.colId && k.tbId === n.tbId && k.tbName === n.tbName && k.dbName === n.dbName && 
+                  n.operation === k.operation && n.value === k.value && n.colName === k.colName) {
+                    farCommMetaListFlag = false
+                  }
+              }
+              if (farCommMetaListFlag) {
+                farCommMetaListArr.push(k);
+              }
+            }
+            j.farCommMetaList = farCommMetaListArr;
+            flag = false;
+          }
+        }
+        // 去重后的过滤数组
+        if (flag) {
+          newFilterMetasJson.push(i);
+        }
+      }
+
+      const mainTabInfo = {}; // 主表信息 
+      mainTabInfo['tbId'] = values.tableInfo.split('-')[0];
+      mainTabInfo['dbName'] = values.tableInfo.split('-')[1];
+      mainTabInfo['tbCname'] = values.tableInfo.split('-')[2];
+      mainTabInfo['tbName'] = values.tableInfo.split('-')[3];
+      const selectTabColInfo = []; // 选择字段信息
+      this.state.checkedKeys.map((i) => {
+        if (i.split('-').length > 2) { // 子节点
+          const list = {};
+          list['colCname'] = i.split('-')[0];
+          list['dbName'] = i.split('-')[1];
+          list['tbId'] = i.split('-')[2];
+          list['tbName'] = i.split('-')[3];
+          list['colId'] = i.split('-')[4];
+          list['colName'] = i.split('-')[5];
+          list['tbCname'] = i.split('-')[6];
+          selectTabColInfo.push(list);
+        }
+      });
+      const autoParams = {
+        mainTabDateInfo,
+        mainTabInfo,
+        selectTabColInfo,
+        filterMetas: newFilterMetasJson,
+      }
+      const payload = {
+        autoParams,
+        currentPageNum: 1,
+        pageSize: this.state.pageSize,
+      }
+      this.setState({ payload: autoParams, showTable: true, });
+      this.props.dispatch({
+        type: 'analysis/getPageResult',
+        payload,
+      }).then(()=>{
+        let columns = [];
+        this.state.checkedKeys.map((item) => {
+          const list = {};
+          const reader = (item) => {
+            return (
+              <span>
+                {/* <div>{item.split('-')[6]}</div> */}
+                <div>{item.split('-')[0]}</div>
+              </span>
+            );
+          }
+          if (item.split('-').length > 2) {
+            list['title'] = reader(item),
+            list['dataIndex'] = item.split('-')[5],
+            list['align'] = 'center',
+            columns.push(list);
+          }
+        });
+        this.setState({ columns, currentPageNum: 1, downloadButFlag: true });
+        // 设置table滚动
+        const checkedKeysLength = [...new Set(this.state.checkedKeys)].length;
+        if (7 < checkedKeysLength && checkedKeysLength < 10) {
+          this.setState({ tabelScrollX: 1000 });
+        } else if (9 < checkedKeysLength && checkedKeysLength < 12) {
+          this.setState({ tabelScrollX: 1100 });
+        } else if (11 < checkedKeysLength && checkedKeysLength < 14) {
+          this.setState({ tabelScrollX: 1200 });
+        } else if (13 < checkedKeysLength && checkedKeysLength < 16) {
+          this.setState({ tabelScrollX: 1300 });
+        } else if (15 < checkedKeysLength && checkedKeysLength < 18){
+          this.setState({ tabelScrollX: 1400 });
+        } else if (17 < checkedKeysLength && checkedKeysLength < 20){
+          this.setState({ tabelScrollX: 1500 });
+        } else if (19 < checkedKeysLength && checkedKeysLength < 22) {
+          this.setState({ tabelScrollX: 1600 });
+        } else if (21 < checkedKeysLength && checkedKeysLength < 24) {
+          this.setState({ tabelScrollX: 1700 });
+        } else if (23 < checkedKeysLength && checkedKeysLength < 26) {
+          this.setState({ tabelScrollX: 1800 });
+        } else if (checkedKeysLength > 26) {
+          this.setState({ tabelScrollX: 2000 });
+        }
+      }).catch((e) => {
+        message.warn(e.message);
+      });
+    });
+  }
+
+  // 获取过滤的维度数据
+  getDimDescData = (flag,data) => {
+    if (flag === 'edit') {
+      this.props.dispatch({
+        type: 'analysis/getDimDesc',
+        payload: {
+          colName: data.colName,
+          dbName: data.dbName,
+          tbName: data.tbName,
+        },
+      }).then(()=>{
+        this.props.form.setFieldsValue({ dimDesc: data.value });
+      });
+    } else {
+      this.props.dispatch({
+        type: 'analysis/getDimDesc',
+        payload: {
+          colName: data[0].split('-')[5],
+          dbName: data[0].split('-')[1],
+          tbName: data[0].split('-')[3],
+        },
+      });
+    }
+  }
+
+  handleTableChange = (page,pageSize) => {
+    this.setState({ pageSize, currentPageNum: page });
+    const payload = this.state.payload;
+    this.props.dispatch({
+      type: 'analysis/getPageResult',
+      payload: {
+        autoParams: {...payload},
+        currentPageNum: page,
+        pageSize: pageSize,
+      },
+    });
+  }
+
+  // 清除选择
+  onChangeClean = (e) => {
+    this.setState({ loadLeftData: true, filterInfoValue: [], filterItemList: [], });
+    setTimeout(()=>{
+      const tableInfo = this.props.form.getFieldValue('tableInfo');
+      if (tableInfo === undefined) {
+        this.props.dispatch({
+          type: 'analysis/getAllTableInfo',
+        }).then(()=>{
+          const {getAllTableInfoData} = this.props.analysis;
+          const expandedKeys = [];
+          getAllTableInfoData.map((i) => {
+            expandedKeys.push(i.dbName +'-'+ i.tbId);
+          });
+          this.setState({ expandedKeys, checkedKeys: [], loadLeftData: false, getMainTabDateColData: [] });
+          this.props.form.setFieldsValue({ filterInfo: [], mainTabDate: '', rightValue: undefined, leftValue: undefined });
+        }).catch((e)=>{
+          message.warn(e.message);
+        });
+      }
+    },100);
+  }
+
+  download = () => {
+    const payload = {...this.state.payload};
+    const content = JSON.stringify(payload);
+    var url = `${SERVER}/iap/autoly/downLoad`;
+
+    const headerInfo = {}
+    this.state.checkedKeys.map((item) => {
+      const colCname = item.split('-')[0];
+      const colName = item.split('-')[5];
+      headerInfo[colName] = colCname;
+    });
+
+    var TargetFrame = document.createElement("iframe");
+    TargetFrame.setAttribute("name", 'download_frame');
+    TargetFrame.setAttribute("style", "display:none");
+    document.body.appendChild(TargetFrame);
+
+    var form = document.createElement("form");
+    form.setAttribute("style", "display:none");
+    form.setAttribute("target", "download_frame");
+    form.setAttribute("method", "post");
+    form.setAttribute("action", url);
+
+    var input1 = document.createElement("input");
+    input1.setAttribute("type", "hidden");
+    input1.setAttribute("name", "content");
+    input1.setAttribute("value", content);
+    form.appendChild(input1);
+
+    var input2 = document.createElement("input");
+    input2.setAttribute("type", "hidden");
+    input2.setAttribute("name", "header");
+    input2.setAttribute("value", JSON.stringify(headerInfo));
+    form.appendChild(input2);
+
+    document.body.appendChild(form);
+    form.submit();
+  }
+
+  // 右边操作内容
+  renderRightForm () {
+    const { loading, form: { getFieldDecorator, getFieldValue}, 
+      analysis: {getPageResultData, getDimDescData, getFilterInfoData} } = this.props;
+    const {getMainTableData, getMainTabDateColData, } = this.state;
+    const formItemLayout = {
+      labelCol: {
+        xs: { span: 24 },
+        sm: { span: 8 },
+      },
+      wrapperCol: {
+        xs: { span: 24 },
+        sm: { span: 16 },
+      },
+    };
+    let getTableInfo = [];
+    // 获取主表信息
+    if (getMainTableData.length > 0) {
+      getMainTableData.map((i) => {
+        const list = (
+          <Option value={i.tbId +'-'+ i.dbName +'-'+ i.tbCname +'-'+ i.tbName} key={i.tbId}>{i.tbCname}</Option>
+        );
+        getTableInfo.push(list);
+      });
+    }
+
+    const getMainTabDateCol = [];
+    if (getMainTabDateColData.length > 0) {
+      getMainTabDateColData.map((i) => {
+        const list = (
+          <Option value={i.colName +'-'+ i.dataType +'-'+ i.dbName +'-'+ i.tbName} key={i.colCname}>{i.colCname}</Option>
+        );
+        getMainTabDateCol.push(list);
+      });
+    }
+
+    const data = getPageResultData.result !== undefined ? getPageResultData.result : [];
+    const total = getPageResultData.totalRecordCount !== undefined ? getPageResultData.totalRecordCount : 0;
+
+    return(
+      <Form onSubmit={e=>this.submitForm(e)} layout="inline">
+        <Row style={{ border: '1px solid #dadada', borderBottom: 'none', paddingLeft: 6, }}>
+          <FormItem label="主表信息" {...formItemLayout}>
+            {getFieldDecorator('tableInfo', { rules: [{ required: true, message: '必选'}] })(
+              <Select style={{ width: 170,}} onChange={e=>this.onChangeClean(e)} onSelect={e=>this.selectTbInfo(e)} allowClear>
+                {getTableInfo.map((item) => { return item; })}
+              </Select>
+            )}
+          </FormItem>
+        </Row>
+        <Row style={{border: '1px solid #dadada', borderBottom: 'none',}}>
+          <FormItem label="" {...formItemLayout}>
+            <div style={{ width: 800, paddingLeft: 16, }}>
+              <span style={{
+                color: '#f5222d', fontSize: 12, fontFamily: 'SimSun', margin: '0 4px 0 0', display: 'inline-block'
+                }}
+                >*
+              </span>
+              <span>统计时间：</span>
+              {getFieldDecorator(`mainTabDate`, { rules: [{ required: true, message: '必选'}] })(
+                <Select style={{ width: '14%', marginRight: 4 }}>
+                  {getMainTabDateCol.map((item) => { return item })}
+                </Select>
+              )}
+                {getFieldDecorator(`leftValue`)(
+                  <DatePicker 
+                    placeholder='[起始时间]' 
+                    style={{width: 170}}/>
+                )}
+                  <span style={{margin: '0 4px'}}>~</span>
+                {getFieldDecorator(`rightValue`)(
+                  <DatePicker 
+                    placeholder='[终止时间]' 
+                    style={{width: 170}}
+                    />
+                )}
+            </div>
+          </FormItem>
+        </Row>
+        <Collapse defaultActiveKey={['1','2','3','4']}>
+          {/* <Panel header="获取主表信息" key="1"> 
+           <FormItem label="主表信息" {...formItemLayout}>
+            {getFieldDecorator('tableInfo', { rules: [{ required: true, message: '必选'}] })(
+              <Select style={{ width: 140,}} onChange={e=>this.onChangeClean(e)} onSelect={e=>this.selectTbInfo(e)} allowClear>
+                {getTableInfo.map((item) => { return item; })}
+              </Select>
+            )}
+          </FormItem> 
+          </Panel>  */}
+         {/* <Panel header="统计时间" key="2">
+          <FormItem label="" {...formItemLayout}>
+            <div style={{ width: 800}}>
+              <span style={{
+                color: '#f5222d', fontSize: 12, fontFamily: 'SimSun', margin: '0 4px 0 0', display: 'inline-block'
+                }}
+                >*
+              </span>
+              {getFieldDecorator(`mainTabDate`, { rules: [{ required: true, message: '必选'}] })(
+                <Select style={{ width: '14%', marginRight: 4 }}>
+                  {getMainTabDateCol.map((item) => { return item })}
+                </Select>
+              )}
+                {getFieldDecorator(`leftValue`)(
+                  <DatePicker 
+                    placeholder='[起始时间]' 
+                    style={{width: 170}}/>
+                )}
+                  <span style={{margin: '0 4px'}}>~</span>
+                {getFieldDecorator(`rightValue`)(
+                  <DatePicker 
+                    placeholder='[终止时间]' 
+                    style={{width: 170}}
+                    />
+                )}
+            </div>
+          </FormItem>
+         </Panel> */}
+         <Panel header="选择字段" key="1">
+          <FormItem label="" {...formItemLayout}>
+            {getFieldDecorator('filterInfo',{initialValue: []})(
+              <Select
+                mode="multiple"
+                notFoundContent=''
+                style={{ width: 830 }}
+                onDeselect={e => this.onDeleteItem(e)}
+              >
+                 {[]}
+              </Select>
+            )}
+          </FormItem>
+         </Panel>
+        </Collapse>
+        <Row style={{ border: '1px solid #dadada', borderTop: 'none' }}>
+          <div style={{ padding: '6px 18px', background: '#fff', }}>
+            <span>过滤器：</span>
+            <Button onClick={e=> this.addFilter(e)} style={{ marginLeft: '10px'}}>添加过滤条件</Button>
+          </div>
+        </Row>
+        <div style={{ margin: '10px 0', display: 'flex', justifyContent: 'space-between' }}>
+          <div>
+            <Button type="primary" htmlType="submit"  style={{ marginRight: '10px'}}>查询</Button>
+            <Button onClick={this.onCancelSearchInfo}>取消</Button>
+          </div>
+          <Button onClick={this.download} style={{ marginLeft: 10, display: this.state.downloadButFlag === true ? '' : 'none' }}  type='primary'>
+            导出数据
+          </Button>
+        </div>
+        
+        <Table 
+          style={{ display: this.state.showTable ? '' : 'none' }}
+          loading={loading}
+          columns={this.state.columns}
+          dataSource={data}
+          scroll={{x: this.state.tabelScrollX}}
+          bordered
+          pagination={{
+            current:this.state.currentPageNum,
+            pageSize:this.state.pageSize,
+            total: total,
+            onChange: (page, pageSize) => this.handleTableChange(page, pageSize),
+          }}
+          title={() => {return '查询列表'}}
+        />
+        <div style={{ position: 'relative'}}>
+        <Modal
+          width={1200}
+          visible={this.state.filterListModel}
+          onOk={e => this.onOkFilterListModel(e)}
+          okText={'保存'}
+          onCancel={e=> this.onCanelFilterListModel(e)}
+          destroyOnClose={true}
+          title={'添加过滤条件'}
+          footer={null}
+          closable={false}
+          >
+          <div style={{ position: 'absolute', top: 10, right:20 }}>
+            <Button style={{ marginRight: 10 }} onClick={e => this.onOkFilterListModel(e)} type='primary'>保存</Button>
+            <Button onClick={e=> this.onCanelFilterListModel(e)}>取消</Button>
+          </div>
+             <QueryAnalyFilter 
+              root={this} 
+              getDimDescData = {getDimDescData} 
+              getFilterInfoData = {getFilterInfoData} 
+              filterItemList = {this.state.filterItemList}
+              filterExpandedKeys = {this.state.filterExpandedKeys}
+              {...this.props}
+            /> 
+        </Modal>
+        </div>
+      </Form>
+    );
+  }
+
+  render () { 
+    const {getAllTableInfoData} = this.props.analysis;
+    const data = getAllTableInfoData.length > 0 ? getAllTableInfoData : [];
+    return (
+      <PageHeaderLayout>
+        <div style={{ display: 'flex', height: '100%' }}>
+          <Card bordered={false} style={{ overflowY: 'scroll', width: '20%' }}>
+            <QueryAnalyLeftComponent root={this} {...this.props} getAllTableInfoData={data} expandedKeys={this.state.expandedKeys}/>
+          </Card>
+          <Card bordered={false} style={{ overflowY: 'scroll', flex: 1 }} id='top'>
+            {this.renderRightForm()}
+          </Card>
+        </div>
+      </PageHeaderLayout>
+    );
+  }
+}
